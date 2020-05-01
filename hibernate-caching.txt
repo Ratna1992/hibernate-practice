@@ -1,0 +1,168 @@
+https://www.youtube.com/watch?v=fVDu0sF_wSA
+https://www.youtube.com/watch?v=7yPalDu6gx8
+https://www.youtube.com/watch?v=TCHm1h7rBmo
+https://www.youtube.com/watch?v=iwCdyr0bdkw&list=PL4AFF701184976B25&index=36
+
+
+First Level Cache is based on session level 
+
+whenever we trigger a query hibernate first checks in first level cache if not available then checks in second level cache if not available then hits database and get required response
+
+// first level cache available in session
+		//first trigger
+		s = (Student) session1.get(Student.class, 1);
+		System.out.println(s);
+		//second trigger
+		s = (Student) session1.get(Student.class, 1);
+		System.out.println(s);
+		
+Hibernate: select student0_.id as id1_0_0_, student0_.gender as gender2_0_0_, student0_.name as name3_0_0_, student0_.rollnumber as rollnumb4_0_0_ from student student0_ where student0_.id=?
+Student [id=1, name=Ratna, rollNumber=815899, gender=null]
+Student [id=1, name=Ratna, rollNumber=815899, gender=null]
+
+
+In above example it got the response of second trigger from first level cache hence no query is triggered
+
+//first trigger
+		s = (Student) session1.get(Student.class, 1);
+		System.out.println(s);
+		//second trigger
+		s = (Student) session1.get(Student.class, 2);
+		System.out.println(s);
+		
+Hibernate: select student0_.id as id1_0_0_, student0_.gender as gender2_0_0_, student0_.name as name3_0_0_, student0_.rollnumber as rollnumb4_0_0_ from student student0_ where student0_.id=?
+Student [id=1, name=Ratna, rollNumber=815899, gender=null]
+Hibernate: select student0_.id as id1_0_0_, student0_.gender as gender2_0_0_, student0_.name as name3_0_0_, student0_.rollnumber as rollnumb4_0_0_ from student student0_ where student0_.id=?
+Student [id=2, name=Lilly, rollNumber=815900, gender=null]
+
+
+In above example we see two queries as the ask is different hence it went to database and got response
+
+
+// first level cache available in session1
+		s = (Student) session1.get(Student.class, 1);
+		System.out.println(s);
+		s = (Student) session1.get(Student.class, 1);
+		System.out.println(s);
+		session1.getTransaction().commit();
+		
+		//as first level cache is session level if we created 
+		//session2 again it triggers query
+		Session session2 = sessionFactory.openSession();
+		session2.beginTransaction();
+		s = (Student) session2.get(Student.class, 1);
+		System.out.println(s);
+		session2.getTransaction().commit();
+		
+Hibernate: select student0_.id as id1_0_0_, student0_.gender as gender2_0_0_, student0_.name as name3_0_0_, student0_.rollnumber as rollnumb4_0_0_ from student student0_ where student0_.id=?
+Student [id=1, name=Ratna, rollNumber=815899, gender=null]
+Student [id=1, name=Ratna, rollNumber=815899, gender=null]
+Hibernate: select student0_.id as id1_0_0_, student0_.gender as gender2_0_0_, student0_.name as name3_0_0_, student0_.rollnumber as rollnumb4_0_0_ from student student0_ where student0_.id=?
+Student [id=2, name=Lilly, rollNumber=815900, gender=null]
+
+In above example we see two queries as the ask is same but sessions are different hence it triggered
+
+
+Second Level Cache is for entire sessions we should enable it and we have to use @cacheable annotation on entity level
+
+we should do following things
+
+@Entity
+@Table(name = "author")
+@Cacheable
+@Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
+public class Author {
+
+	@Id
+	@GeneratedValue
+	private Integer bookId;
+	@Column
+	private String title;
+	@Column
+	private Integer price;
+	@Column
+	private String description;
+	//setters getters
+	}
+we should declare entity with @Cacheable and @Cache annotations and we have to configure second level cache in pom.xml
+
+<!-- Second Level Cache -->
+		<dependency>
+			<groupId>net.sf.ehcache</groupId>
+			<artifactId>ehcache</artifactId>
+			<version>2.10.6</version>
+		</dependency>
+		<dependency>
+			<groupId>org.hibernate</groupId>
+			<artifactId>hibernate-ehcache</artifactId>
+			<version>5.3.7.Final</version>
+		</dependency>
+
+make sure cache version matches hibernate-core version 
+
+we should add in configuration
+
+// using second level cache
+				settings.put(Environment.USE_SECOND_LEVEL_CACHE, "true");
+				settings.put(Environment.CACHE_REGION_FACTORY,
+						"org.hibernate.cache.ehcache.internal.EhcacheRegionFactory");
+				// setting properties to configuration class
+				configuration.setProperties(settings);
+				// adding beans to configuration
+				configuration.addAnnotatedClass(Author.class);
+				
+Author s = null;
+		SessionFactory sessionFactory = HibernateSecondLevelCacheConfiguration.getSessionFactory();
+		Session session1 = sessionFactory.openSession();
+		session1.beginTransaction();
+		s = (Author) session1.get(Author.class, 1);
+		System.out.println(s);
+		session1.getTransaction().commit();
+		session1.close();
+
+		Session session2 = sessionFactory.openSession();
+		session2.beginTransaction();
+		s = (Author) session2.get(Author.class, 1);
+		System.out.println(s);
+		session2.getTransaction().commit();
+		session2.close();
+
+Hibernate: select author0_.bookId as bookId1_0_0_, author0_.description as descript2_0_0_, author0_.price as price3_0_0_, author0_.title as title4_0_0_ from author author0_ where author0_.bookId=?
+Author [bookId=1, title=Spring Boot, price=123, description=complete guidance]
+Author [bookId=1, title=Spring Boot, price=123, description=complete guidance]
+
+finally even though we used two sessions it triggered query only once
+
+
+// using query cache
+				settings.put(Environment.USE_QUERY_CACHE, "true");
+				settings.put(Environment.CACHE_REGION_FACTORY,
+						"org.hibernate.cache.ehcache.internal.EhcacheRegionFactory");
+						// setting properties to configuration class
+				configuration.setProperties(settings);
+				// adding beans to configuration
+				configuration.addAnnotatedClass(Author.class);
+				
+SessionFactory sessionFactory = HibernateSecondLevelCacheConfiguration.getSessionFactory();
+		Session session1 = sessionFactory.openSession();
+		session1.beginTransaction();
+		Query<Author> createQuery = session1.createQuery("from Author");
+		createQuery.setCacheable(true);
+		List<Author> list = createQuery.list();
+		list.forEach(System.out::println);
+
+		session1.getTransaction().commit();
+		session1.close();
+
+		Session session2 = sessionFactory.openSession();
+		session2.beginTransaction();
+		Query<Author> createQuery1 = session2.createQuery("from Author");
+		createQuery1.setCacheable(true);
+		List<Author> list1 = createQuery1.list();
+		list1.forEach(System.out::println);
+		session2.getTransaction().commit();
+		session2.close();
+		
+Hibernate: select author0_.bookId as bookId1_0_, author0_.description as descript2_0_, author0_.price as price3_0_, author0_.title as title4_0_ from author author0_
+Author [bookId=1, title=Spring Boot, price=123, description=complete guidance]
+Author [bookId=1, title=Spring Boot, price=123, description=complete guidance]
