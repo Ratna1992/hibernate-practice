@@ -166,3 +166,5 @@ SessionFactory sessionFactory = HibernateSecondLevelCacheConfiguration.getSessio
 Hibernate: select author0_.bookId as bookId1_0_, author0_.description as descript2_0_, author0_.price as price3_0_, author0_.title as title4_0_ from author author0_
 Author [bookId=1, title=Spring Boot, price=123, description=complete guidance]
 Author [bookId=1, title=Spring Boot, price=123, description=complete guidance]
+
+some notes on cache
