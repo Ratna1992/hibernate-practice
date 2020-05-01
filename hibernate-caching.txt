@@ -169,6 +169,10 @@ Author [bookId=1, title=Spring Boot, price=123, description=complete guidance]
 
 some notes on cache
 
+
+contains all session methods differences aswell
+=======
 done
+
 
 Thanks :)
